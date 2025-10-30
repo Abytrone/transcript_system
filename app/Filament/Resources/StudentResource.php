@@ -17,6 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Auth;
 
 class StudentResource extends Resource
 {
@@ -241,17 +242,11 @@ class StudentResource extends Resource
                                 ->send();
                         }
                     }),
-                Tables\Actions\Action::make('download_template')
-                    ->label('Download Template')
-                    ->icon('heroicon-o-document-arrow-down')
-                    ->color('gray')
-                    ->action(function () {
-                        return Excel::download(new StudentsExport, 'students-template-' . date('Y-m-d') . '.xlsx');
-                    }),
                 Tables\Actions\Action::make('import_results')
                     ->label('Import Results')
                     ->icon('heroicon-o-academic-cap')
                     ->color('warning')
+                    ->visible(fn () => Auth::check() && Auth::user()->hasRole('lecturer'))
                     ->url(fn () => route('filament.admin.resources.students.import-results'))
                     ->openUrlInNewTab(),
             ]);

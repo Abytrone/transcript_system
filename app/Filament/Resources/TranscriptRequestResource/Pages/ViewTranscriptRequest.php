@@ -17,3 +17,5 @@ class ViewTranscriptRequest extends ViewRecord
         ];
     }
 }
+
+

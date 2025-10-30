@@ -17,9 +17,9 @@ class DatabaseSeeder extends Seeder
             FacultySeeder::class,
             DepartmentSeeder::class,
             ProgramSeeder::class,
+            CourseSeeder::class,
             UsersSeeder::class,
             StudentSeeder::class,
-            CourseSeeder::class,
             ResultsSeeder::class,
         ]);
     }

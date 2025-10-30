@@ -4,12 +4,10 @@ namespace App\Filament\Resources\TranscriptResource\Pages;
 
 use App\Filament\Resources\TranscriptResource;
 use App\Services\PdfService;
-use App\Services\EmailDeliveryService;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
-use Filament\Forms;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,42 +25,6 @@ class ViewTranscript extends ViewRecord
                 ->url(fn () => route('student.transcript', $this->record->student))
                 ->openUrlInNewTab()
                 ->visible(fn (): bool => $this->record->status !== 'draft'),
-
-            Actions\Action::make('send_email')
-                ->label('Send Email')
-                ->icon('heroicon-o-envelope')
-                ->color('primary')
-                ->form([
-                    Forms\Components\TextInput::make('recipient_email')
-                        ->label('Recipient Email')
-                        ->email()
-                        ->required()
-                        ->default(fn () => $this->record->student->email),
-                    Forms\Components\Textarea::make('message')
-                        ->label('Additional Message')
-                        ->rows(3)
-                        ->placeholder('Optional message to include with the transcript...'),
-                ])
-                ->action(function (array $data) {
-                    $emailService = app(EmailDeliveryService::class);
-                    $success = $emailService->sendTranscript($this->record, $data['recipient_email'], $data['message']);
-
-                    if ($success) {
-                        Notification::make()
-                            ->title('Transcript sent successfully')
-                            ->success()
-                            ->send();
-                    } else {
-                        Notification::make()
-                            ->title('Failed to send transcript')
-                            ->danger()
-                            ->send();
-                    }
-                })
-                ->visible(fn (): bool =>
-                    $this->record->status === 'issued' &&
-                    Auth::user()->hasAnyRole(['super_admin', 'faculty_admin'])
-                ),
 
             Actions\EditAction::make(),
         ];
@@ -112,34 +74,6 @@ class ViewTranscript extends ViewRecord
                                     ->icon('heroicon-o-user')
                                     ->placeholder('Not issued')
                                     ->color(fn ($state) => $state ? 'info' : 'gray'),
-                            ]),
-
-                        Infolists\Components\Grid::make(3)
-                            ->schema([
-                                Infolists\Components\TextEntry::make('delivery_method')
-                                    ->label('Delivery Method')
-                                    ->icon('heroicon-o-truck')
-                                    ->badge()
-                                    ->color(fn (string $state): string => match ($state) {
-                                        'pickup' => 'warning',
-                                        'email' => 'primary',
-                                        'mail' => 'info',
-                                        default => 'gray',
-                                    })
-                                    ->placeholder('Not set'),
-
-                                Infolists\Components\TextEntry::make('recipient_email')
-                                    ->label('Recipient Email')
-                                    ->icon('heroicon-o-envelope')
-                                    ->placeholder('Not set')
-                                    ->color(fn ($state) => $state ? 'info' : 'gray'),
-
-                                Infolists\Components\TextEntry::make('email_sent_at')
-                                    ->label('Email Sent Date')
-                                    ->icon('heroicon-o-paper-airplane')
-                                    ->dateTime()
-                                    ->placeholder('Not sent')
-                                    ->color(fn ($state) => $state ? 'success' : 'gray'),
                             ]),
                     ])
                     ->collapsible(),

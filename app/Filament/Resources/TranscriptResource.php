@@ -6,7 +6,6 @@ use App\Filament\Resources\TranscriptResource\Pages;
 use App\Models\Transcript;
 use App\Models\Student;
 use App\Services\PdfService;
-use App\Services\EmailDeliveryService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -52,17 +51,10 @@ class TranscriptResource extends Resource
                         if ($state) {
                             $student = Student::with(['program', 'department'])->find($state);
                             if ($student) {
-                                // Auto-populate program
                                 $set('program', $student->program?->name ?? '');
-
-                                // Auto-populate year of completion
                                 $set('year_of_completion', $student->year_of_completion);
-
-                                // Auto-calculate CGPA
                                 $cgpa = $student->getCumulativeGPA();
                                 $set('cgpa', $cgpa);
-
-                                // Auto-determine class of degree
                                 $classOfDegree = self::determineClassOfDegree($cgpa);
                                 $set('class_of_degree', $classOfDegree);
                             }
@@ -93,11 +85,9 @@ class TranscriptResource extends Resource
                     ->disabled()
                     ->dehydrated(),
 
-
                 Forms\Components\Select::make('status')
                     ->options(function ($record) {
                         $currentStatus = $record?->status ?? 'draft';
-
                         return match ($currentStatus) {
                             'draft' => [
                                 'draft' => 'Draft',
@@ -121,13 +111,10 @@ class TranscriptResource extends Resource
                     ->live()
                     ->visible(fn (): bool => Auth::user()->hasAnyRole(['super_admin', 'faculty_admin']))
                     ->afterStateUpdated(function ($state, $set, $get) {
-                        // Auto-set issued_by and issued_at when status changes to 'issued'
                         if ($state === 'issued') {
                             $set('issued_by', Auth::id());
                             $set('issued_at', now());
                         }
-
-                        // Auto-set verified_by and verified_at when status changes to 'verified'
                         if ($state === 'verified') {
                             $set('verified_by', Auth::user()->name);
                             $set('verified_at', now());
@@ -156,52 +143,6 @@ class TranscriptResource extends Resource
                     ->visible(fn ($get) => $get('status') === 'verified')
                     ->default(Auth::user()->name)
                     ->disabled(),
-
-                Forms\Components\Section::make('Delivery Information')
-                    ->schema([
-                        Forms\Components\Select::make('delivery_method')
-                            ->label('Delivery Method')
-                            ->options([
-                                'pickup' => 'Pickup',
-                                'email' => 'Email',
-                                'mail' => 'Physical Mail',
-                            ])
-                            ->default('pickup')
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(function ($state, $set, $get) {
-                                // Clear recipient email if not email delivery
-                                if ($state !== 'email') {
-                                    $set('recipient_email', null);
-                                } else {
-                                    // Auto-populate with student email for email delivery
-                                    $studentId = $get('student_id');
-                                    if ($studentId) {
-                                        $student = Student::find($studentId);
-                                        $set('recipient_email', $student?->email ?? '');
-                                    }
-                                }
-                            }),
-
-                        Forms\Components\TextInput::make('recipient_email')
-                            ->label('Recipient Email')
-                            ->email()
-                            ->required(fn ($get) => $get('delivery_method') === 'email')
-                            ->visible(fn ($get) => $get('delivery_method') === 'email')
-                            ->placeholder('Enter recipient email address...')
-                            ->helperText('Required when delivery method is email')
-                            ->rules([
-                                'required_if:delivery_method,email',
-                                'email',
-                            ]),
-
-                        Forms\Components\Textarea::make('delivery_notes')
-                            ->label('Delivery Notes')
-                            ->rows(3)
-                            ->placeholder('Additional notes for delivery...'),
-                    ])
-                    ->visible(fn ($get) => $get('status') === 'issued')
-                    ->columns(2),
             ]);
     }
 
@@ -231,14 +172,21 @@ class TranscriptResource extends Resource
                     ->sortable()
                     ->alignCenter()
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        $state >= 5.0 => 'success',
-                        $state >= 4.9 => 'primary',
-                        $state >= 3.5 => 'warning',
-                        $state >= 2.0 => 'danger',
-                        $state >= 2.5 => 'gray',
-                        $state >= 1.0 => 'gray',
-                        default => 'gray',
+                    ->color(function (string $state): string {
+                        $cgpa = (float) $state;
+                        if ($cgpa >= 3.6) {
+                            return 'success';
+                        }
+                        if ($cgpa >= 3.0) {
+                            return 'primary';
+                        }
+                        if ($cgpa >= 2.5) {
+                            return 'warning';
+                        }
+                        if ($cgpa >= 2.0) {
+                            return 'danger';
+                        }
+                        return 'gray';
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('class_of_degree')
@@ -265,29 +213,6 @@ class TranscriptResource extends Resource
                     ->sortable()
                     ->placeholder('Not issued')
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('delivery_method')
-                    ->label('Delivery')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'pickup' => 'gray',
-                        'email' => 'primary',
-                        'mail' => 'warning',
-                        default => 'gray',
-                    })
-                    ->placeholder('Not set')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('recipient_email')
-                    ->label('Email Sent To')
-                    ->placeholder('Not sent')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('email_sent_at')
-                    ->label('Email Sent')
-                    ->dateTime()
-                    ->placeholder('Not sent')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -308,13 +233,6 @@ class TranscriptResource extends Resource
                         'Third Class' => 'Third Class',
                         'Pass' => 'Pass',
                     ]),
-                Tables\Filters\SelectFilter::make('delivery_method')
-                    ->label('Delivery Method')
-                    ->options([
-                        'pickup' => 'Pickup',
-                        'email' => 'Email',
-                        'mail' => 'Physical Mail',
-                    ]),
                 Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
@@ -326,43 +244,6 @@ class TranscriptResource extends Resource
                         ->url(fn (Transcript $record) => route('student.transcript', $record->student))
                         ->openUrlInNewTab()
                         ->visible(fn (Transcript $record): bool => $record->status !== 'draft'),
-
-                    Action::make('send_email')
-                        ->label('Send Email')
-                        ->icon('heroicon-o-envelope')
-                        ->color('primary')
-                        ->form([
-                            Forms\Components\TextInput::make('recipient_email')
-                                ->label('Recipient Email')
-                                ->email()
-                                ->required()
-                                ->default(fn (Transcript $record) => $record->student->email),
-                            Forms\Components\Textarea::make('message')
-                                ->label('Additional Message')
-                                ->rows(3)
-                                ->placeholder('Optional message to include with the transcript...'),
-                        ])
-                        ->action(function (Transcript $record, array $data) {
-                            $emailService = app(EmailDeliveryService::class);
-                            $success = $emailService->sendTranscript($record, $data['recipient_email'], $data['message']);
-
-                            if ($success) {
-                                Notification::make()
-                                    ->title('Transcript sent successfully')
-                                    ->success()
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->title('Failed to send transcript')
-                                    ->danger()
-                                    ->send();
-                            }
-                        })
-                        ->visible(fn (Transcript $record): bool =>
-                            $record->status === 'issued' &&
-                            Auth::user()->hasAnyRole(['super_admin', 'faculty_admin'])
-                        ),
-
 
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
@@ -380,54 +261,22 @@ class TranscriptResource extends Resource
                         ->action(function (Collection $records) {
                             $pdfService = app(PdfService::class);
                             $count = 0;
-
                             foreach ($records as $record) {
                                 if ($record->status !== 'draft') {
                                     try {
                                         $pdfService->generateTranscriptPdf($record);
                                         $count++;
                                     } catch (\Exception $e) {
-                                        // Log error but continue
+                                        // ignore errors per-record
                                     }
                                 }
                             }
-
                             Notification::make()
                                 ->title("Generated {$count} PDFs successfully")
                                 ->success()
                                 ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
-
-                    BulkAction::make('bulk_send_email')
-                        ->label('Send Emails')
-                        ->icon('heroicon-o-envelope')
-                        ->color('primary')
-                        ->form([
-                            Forms\Components\TextInput::make('recipient_email')
-                                ->label('Recipient Email')
-                                ->email()
-                                ->required(),
-                            Forms\Components\Textarea::make('message')
-                                ->label('Additional Message')
-                                ->rows(3)
-                                ->placeholder('Optional message to include with the transcripts...'),
-                        ])
-                        ->action(function (Collection $records, array $data) {
-                            $emailService = app(EmailDeliveryService::class);
-                            $transcriptIds = $records->pluck('id')->toArray();
-                            $results = $emailService->sendBulkTranscripts($transcriptIds, $data['recipient_email'], $data['message']);
-
-                            $successCount = collect($results)->where('success', true)->count();
-                            $totalCount = count($results);
-
-                            Notification::make()
-                                ->title("Sent {$successCount} of {$totalCount} transcripts successfully")
-                                ->success()
-                                ->send();
-                        })
-                        ->deselectRecordsAfterCompletion()
-                        ->visible(fn (): bool => Auth::user()->hasAnyRole(['super_admin', 'faculty_admin', 'department_admin'])),
 
                     Tables\Actions\DeleteBulkAction::make(),
                     Tables\Actions\RestoreBulkAction::make(),
@@ -461,34 +310,21 @@ class TranscriptResource extends Resource
                 SoftDeletingScope::class,
             ]);
 
-        // Apply role-based filtering
         $user = Auth::user();
-
         if ($user->hasRole('super_admin')) {
-            // Super Admin can see all transcripts
             return $query;
-            } elseif ($user->hasRole('faculty_admin')) {
-            // Faculty Admin can see transcripts from their faculty
+        } elseif ($user->hasRole('faculty_admin')) {
             return $query->whereHas('student.department', function ($q) use ($user) {
                 $q->where('faculty_id', $user->faculty_id);
             });
         } elseif ($user->hasRole('department_admin')) {
-            // Department Admin can see transcripts from their department
             return $query->whereHas('student', function ($q) use ($user) {
                 $q->where('department_id', $user->department_id);
             });
-        } elseif ($user->hasRole('verifier')) {
-            // Verifiers can only see issued transcripts
-            return $query->where('status', 'issued');
         }
-
-        // Default: no access
         return $query->whereRaw('1 = 0');
     }
 
-    /**
-     * Determine class of degree based on CGPA
-     */
     public static function determineClassOfDegree(float $cgpa): string
     {
         return match (true) {

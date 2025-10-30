@@ -11,6 +11,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Pages\Page;
 use Filament\Notifications\Notification;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Auth;
 
 class ImportResults extends Page
 {
@@ -26,6 +27,17 @@ class ImportResults extends Page
 
     public function mount(): void
     {
+        if (!Auth::check() || !Auth::user()->hasRole('lecturer')) {
+            Notification::make()
+                ->title('Access denied')
+                ->body('Only lecturers can access the results import page.')
+                ->danger()
+                ->send();
+
+            $this->redirect(static::getResource()::getUrl('index'));
+            return;
+        }
+
         $this->form->fill();
     }
 
@@ -55,6 +67,15 @@ class ImportResults extends Page
 
     public function import(): void
     {
+        if (!Auth::check() || !Auth::user()->hasRole('lecturer')) {
+            Notification::make()
+                ->title('Access denied')
+                ->body('Only lecturers can import results.')
+                ->danger()
+                ->send();
+            return;
+        }
+
         $data = $this->form->getState();
 
         if (!$data['file']) {

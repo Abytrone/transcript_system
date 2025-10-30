@@ -93,18 +93,27 @@
     .signature-line { height: 1px; background: #cbd5e1; margin-top: 24px; }
     .footer { position: fixed; left: 0; right: 0; bottom: 18mm; text-align: center; color: #6b7280; font-size: 10px; }
     .watermark { position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); opacity: 0.05; font-size: 150px; font-weight: 800; color: #111827; white-space: nowrap; }
+    .logo { width: 80px; height: auto; margin: 0 auto 6px; display: block; }
   </style>
 </head>
 <body>
   <div class="watermark">OFFICIAL</div>
   <div class="header">
+    @php $logoPath = public_path('assets/images.jpeg'); @endphp
+    @if(file_exists($logoPath))
+      @php
+        $logoMime = 'image/jpeg';
+        $logoData = base64_encode(file_get_contents($logoPath));
+      @endphp
+      <img src="data:{{ $logoMime }};base64,{{ $logoData }}" alt="School Logo" class="logo" />
+    @endif
     <div class="brand">{{ $schoolMeta['name'] }}</div>
     <div class="meta muted">{{ $schoolMeta['address'] }}</div>
     <div class="meta muted">Tel: {{ $schoolMeta['phone'] }} • Email: {{ $schoolMeta['email'] }}</div>
   </div>
   <div class="divider"></div>
 
-  <div class="row mb-3">
+  <div class="mb-3 row">
     <div class="col-7">
       <div class="section-title">Student Information</div>
       <div class="card">
@@ -172,12 +181,12 @@
         </tbody>
       </table>
       @if(!$usingTranscriptModel)
-        <div class="small muted mb-4">Semester GPA: {{ number_format((float) (optional($studentModel)->getSemesterGPA($year, $semester) ?? 0), 2) }}</div>
+        <div class="mb-4 small muted">Semester GPA: {{ number_format((float) (optional($studentModel)->getSemesterGPA($year, $semester) ?? 0), 2) }}</div>
       @endif
     @endforeach
   @endforeach
 
-  <div class="row mb-4">
+  <div class="mb-4 row">
     <div class="col-6">
       <div class="section-title">Verification</div>
       <div class="card">
@@ -186,7 +195,7 @@
           <div class="row">
             <div class="col-6">
               <div class="qr-box">
-                <div class="small muted mb-2">Verification QR</div>
+                <div class="mb-2 small muted">Verification QR</div>
                 {{-- Display stored SVG if available --}}
                 @php
                   $qrPath = 'storage/qr-codes/transcript-' . ($transcript->uuid ?? 'x') . '.svg';

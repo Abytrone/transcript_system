@@ -85,7 +85,15 @@ class UserResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('roles.name')
                     ->badge()
-                    ->separator(','),
+                    ->label('Roles')
+                    ->separator(',')
+                    ->color(fn (string $state): string => match ($state) {
+                        'super_admin' => 'danger',
+                        'faculty_admin' => 'info',
+                        'department_admin' => 'warning',
+                        'lecturer' => 'success',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {

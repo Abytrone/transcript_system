@@ -16,6 +16,7 @@ use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
 
 class ResultsImport implements ToModel, WithHeadingRow, WithValidation, WithBatchInserts, WithChunkReading, SkipsOnError, SkipsOnFailure
 {
@@ -28,6 +29,11 @@ class ResultsImport implements ToModel, WithHeadingRow, WithValidation, WithBatc
      */
     public function model(array $row)
     {
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('lecturer')) {
+            throw new \Exception('Only lecturers can import results.');
+        }
+
         // Find student by student_id (index number)
         $student = Student::where('student_id', strtoupper(trim($row['student_id'])))->first();
         if (!$student) {
@@ -38,6 +44,12 @@ class ResultsImport implements ToModel, WithHeadingRow, WithValidation, WithBatc
         $course = Course::where('code', strtoupper(trim($row['course_code'])))->first();
         if (!$course) {
             throw new \Exception("Course with code '{$row['course_code']}' not found. Please ensure the course exists in the system.");
+        }
+
+        // Ensure the lecturer teaches this course
+        $teachesCourse = $course->lecturers()->where('users.id', $user->id)->exists();
+        if (!$teachesCourse) {
+            throw new \Exception('You are not assigned as a lecturer for course ' . $course->code . '.');
         }
 
         // Calculate GPA based on score
@@ -98,12 +110,12 @@ class ResultsImport implements ToModel, WithHeadingRow, WithValidation, WithBatc
     public function rules(): array
     {
         return [
-            'student_id' => ['required', 'string', 'max:255', 'exists:students,student_id'],
-            'course_code' => ['required', 'string', 'max:255', 'exists:courses,code'],
+            'student_id' => ['required', 'string'],
+            'course_code' => ['required', 'string'],
             'score' => ['required', 'integer', 'min:0', 'max:100'],
-            'academic_year' => ['required', 'integer', 'min:2000', 'max:2030'],
+            'academic_year' => ['required', 'integer'],
             'semester' => ['required', 'integer', 'in:1,2'],
-            'is_resit' => ['nullable', 'string', 'in:yes,no'],
+            'is_resit' => ['nullable', 'string'],
         ];
     }
 

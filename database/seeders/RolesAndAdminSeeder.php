@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 class RolesAndAdminSeeder extends Seeder
 {
@@ -15,9 +16,15 @@ class RolesAndAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        $roles = ['super_admin', 'faculty_admin', 'department_admin', 'verifier'];
+        $roles = ['super_admin', 'faculty_admin', 'department_admin', 'lecturer'];
         foreach ($roles as $roleName) {
             Role::firstOrCreate(['name' => $roleName]);
+        }
+
+        // Ensure super_admin role has all permissions
+        $superAdminRole = Role::where('name', 'super_admin')->first();
+        if ($superAdminRole) {
+            $superAdminRole->syncPermissions(Permission::all());
         }
 
         // Create Super Admin
@@ -56,16 +63,16 @@ class RolesAndAdminSeeder extends Seeder
         );
         $departmentAdmin->assignRole('department_admin');
 
-        // Create Verifier
-        $verifier = User::firstOrCreate(
-            ['email' => 'verifier@schoolofhygiene.edu.gh'],
+        // Create a sample Lecturer
+        $lecturer = User::firstOrCreate(
+            ['email' => 'lecturer@schoolofhygiene.edu.gh'],
             [
-                'name' => 'Transcript Verifier',
+                'name' => 'Sample Lecturer',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'status' => 'active',
             ]
         );
-        $verifier->assignRole('verifier');
+        $lecturer->assignRole('lecturer');
     }
 }

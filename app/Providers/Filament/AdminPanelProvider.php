@@ -38,13 +38,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                \App\Filament\Widgets\QuickActionsWidget::class,
                 \App\Filament\Widgets\SystemStatsWidget::class,
-                \App\Filament\Widgets\TranscriptRequestsChartWidget::class,
-                \App\Filament\Widgets\RequestStatusChartWidget::class,
-                \App\Filament\Widgets\FacultyStatsWidget::class,
-                \App\Filament\Widgets\DepartmentStatsWidget::class,
-                \App\Filament\Widgets\RecentActivityWidget::class,
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
             ])

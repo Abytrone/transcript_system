@@ -12,6 +12,11 @@ class TranscriptStatusChartWidget extends ChartWidget
 
     protected static ?int $sort = 4;
 
+    protected int | string | array $columnSpan = [
+        'md' => 1,
+        'xl' => 1,
+    ];
+
     protected function getData(): array
     {
         $statusData = Transcript::select('status', DB::raw('COUNT(*) as count'))

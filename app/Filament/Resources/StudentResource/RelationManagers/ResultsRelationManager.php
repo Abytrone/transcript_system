@@ -10,6 +10,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Models\Course;
+use Illuminate\Support\Facades\Auth;
 
 class ResultsRelationManager extends RelationManager
 {
@@ -26,8 +27,20 @@ class ResultsRelationManager extends RelationManager
         return $form
             ->schema([
                 Forms\Components\Select::make('course_id')
-                    ->relationship('course', 'title')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->code . ' - ' . $record->title)
+                    ->label('Course')
+                    ->options(function () {
+                        if (!Auth::check()) {
+                            return [];
+                        }
+                        $user = Auth::user();
+                        if ($user->hasRole('lecturer')) {
+                            return $user->taughtCourses()->orderBy('code')->get()->pluck('code', 'id')->map(function ($code, $id) {
+                                $course = Course::find($id);
+                                return $course ? ($course->code . ' - ' . $course->title) : $code;
+                            })->toArray();
+                        }
+                        return [];
+                    })
                     ->required()
                     ->searchable()
                     ->preload(),
@@ -158,16 +171,17 @@ class ResultsRelationManager extends RelationManager
                     ->label('Resit Only'),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()
+                    ->visible(fn () => Auth::check() && Auth::user()->hasRole('lecturer')),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()->visible(fn () => Auth::check() && Auth::user()->hasRole('lecturer')),
+                Tables\Actions\DeleteAction::make()->visible(fn () => Auth::check() && Auth::user()->hasRole('lecturer')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()->visible(fn () => Auth::check() && Auth::user()->hasRole('lecturer')),
                 ]),
             ])
             ->defaultSort('academic_year', 'desc')
