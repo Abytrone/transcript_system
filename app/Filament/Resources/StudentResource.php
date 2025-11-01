@@ -122,8 +122,10 @@ class StudentResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\ImageColumn::make('photo_path')
+                    ->label('Photo')
                     ->circular()
-                    ->defaultImageUrl(url('/images/default-avatar.png')),
+                    ->defaultImageUrl('https://ui-avatars.com/api/?name=' . urlencode('Student') . '&background=random')
+                    ->url(fn ($record) => $record->photo_path),
                 Tables\Columns\TextColumn::make('student_id')
                     ->searchable()
                     ->sortable(),
@@ -256,6 +258,7 @@ class StudentResource extends Resource
     {
         return [
             RelationManagers\ResultsRelationManager::class,
+            RelationManagers\StudentCoursesRelationManager::class,
         ];
     }
 

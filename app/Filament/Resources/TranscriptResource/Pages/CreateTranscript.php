@@ -15,9 +15,11 @@ class CreateTranscript extends CreateRecord
     {
         parent::mount();
 
-        // Pre-fill the transcript number when the form loads
+        // Pre-fill defaults so they appear when issuing
         $this->form->fill([
             'transcript_number' => app(TranscriptNumberService::class)->generateTranscriptNumber(),
+            'issued_by' => Auth::id(),
+            'issued_at' => today()->format('Y-m-d'),
         ]);
     }
 
@@ -25,7 +27,7 @@ class CreateTranscript extends CreateRecord
     {
         if (($data['status'] ?? 'draft') === 'issued') {
             $data['issued_by'] = $data['issued_by'] ?? Auth::id();
-            $data['issued_at'] = $data['issued_at'] ?? now();
+            $data['issued_at'] = $data['issued_at'] ?? today()->format('Y-m-d');
         }
         return $data;
     }

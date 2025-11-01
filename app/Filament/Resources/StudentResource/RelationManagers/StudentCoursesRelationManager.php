@@ -124,16 +124,30 @@ class StudentCoursesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('credit_hours')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'enrolled',
-                        'success' => 'completed',
-                        'danger' => 'failed',
-                        'info' => 'resit',
-                    ]),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'enrolled' => 'warning',
+                        'completed' => 'success',
+                        'failed' => 'danger',
+                        'resit' => 'info',
+                        default => 'gray',
+                    }),
                 Tables\Columns\IconColumn::make('is_resit')
                     ->boolean()
-                    ->label('Resit'),
+                    ->label('Resit')
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('slate')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->tooltip(function (Tables\Columns\IconColumn $column): ?string {
+                        $state = $column->getState();
+                        if ($state) {
+                            return 'Resit';
+                        }
+                        return 'Not Resit';
+                    }),
                 Tables\Columns\TextColumn::make('remarks')
                     ->limit(50)
                     ->tooltip(function (Tables\Columns\TextColumn $column): ?string {

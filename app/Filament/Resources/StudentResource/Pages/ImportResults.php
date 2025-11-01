@@ -11,7 +11,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Pages\Page;
 use Filament\Notifications\Notification;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ImportResults extends Page
 {
@@ -53,6 +55,7 @@ class ImportResults extends Page
                             ->acceptedFileTypes(['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'])
                             ->required()
                             ->helperText('Upload an Excel (.xlsx) or CSV file with academic results data.')
+                            ->storeFiles(false)
                             ->columnSpanFull(),
 
                         Forms\Components\ViewField::make('format_info')
@@ -67,15 +70,6 @@ class ImportResults extends Page
 
     public function import(): void
     {
-        if (!Auth::check() || !Auth::user()->hasRole('lecturer')) {
-            Notification::make()
-                ->title('Access denied')
-                ->body('Only lecturers can import results.')
-                ->danger()
-                ->send();
-            return;
-        }
-
         $data = $this->form->getState();
 
         if (!$data['file']) {
@@ -88,7 +82,21 @@ class ImportResults extends Page
         }
 
         try {
-            Excel::import(new ResultsImport, $data['file']);
+            $sourcePath = null;
+
+            if ($data['file'] instanceof TemporaryUploadedFile) {
+                // Use temporary file path directly
+                $sourcePath = $data['file']->getRealPath();
+            } elseif (is_string($data['file'])) {
+                // If a string path was provided (stored file), resolve to absolute path
+                $sourcePath = Storage::path($data['file']);
+            }
+
+            if (!$sourcePath || !file_exists($sourcePath)) {
+                throw new \RuntimeException('Uploaded file could not be located on the server. Please re-upload and try again.');
+            }
+
+            Excel::import(new ResultsImport, $sourcePath);
 
             Notification::make()
                 ->title('Import Successful')

@@ -23,7 +23,7 @@ class EditTranscript extends EditRecord
     {
         if (($data['status'] ?? $this->record->status) === 'issued') {
             $data['issued_by'] = $data['issued_by'] ?? Auth::id();
-            $data['issued_at'] = $data['issued_at'] ?? now();
+            $data['issued_at'] = $data['issued_at'] ?? today()->format('Y-m-d');
         }
         return $data;
     }

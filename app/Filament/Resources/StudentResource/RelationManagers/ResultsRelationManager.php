@@ -112,9 +112,9 @@ class ResultsRelationManager extends RelationManager
                         'info' => 'B',
                         'warning' => 'C+',
                         'secondary' => 'C',
-                        'danger' => 'D+',
+                        'slate' => 'D+',
                         'gray' => 'D',
-                        'dark' => 'F',
+                        'danger' => 'F',
                     ])
                     ->placeholder('No Grade'),
                 Tables\Columns\TextColumn::make('gpa')
@@ -124,10 +124,18 @@ class ResultsRelationManager extends RelationManager
                 Tables\Columns\IconColumn::make('is_resit')
                     ->boolean()
                     ->label('Resit')
-                    ->trueIcon('heroicon-o-arrow-path')
-                    ->falseIcon('heroicon-o-check-circle')
-                    ->trueColor('warning')
-                    ->falseColor('success'),
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('slate')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->tooltip(function (Tables\Columns\IconColumn $column): ?string {
+                        $state = $column->getState();
+                        if ($state) {
+                            return 'Resit';
+                        }
+                        return 'Not Resit';
+                    }),
                 Tables\Columns\TextColumn::make('academic_year')
                     ->searchable()
                     ->sortable(),

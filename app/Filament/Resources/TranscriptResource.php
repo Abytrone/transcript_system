@@ -109,11 +109,11 @@ class TranscriptResource extends Resource
                     ->default('draft')
                     ->required()
                     ->live()
-                    ->visible(fn (): bool => Auth::user()->hasAnyRole(['super_admin', 'faculty_admin']))
+                    ->visible(fn (): bool => Auth::user()->hasAnyRole(['super_admin', 'faculty_admin', 'department_admin']))
                     ->afterStateUpdated(function ($state, $set, $get) {
                         if ($state === 'issued') {
                             $set('issued_by', Auth::id());
-                            $set('issued_at', now());
+                            $set('issued_at', today()->format('Y-m-d'));
                         }
                         if ($state === 'verified') {
                             $set('verified_by', Auth::user()->name);
@@ -126,11 +126,30 @@ class TranscriptResource extends Resource
                     ->searchable()
                     ->preload()
                     ->default(Auth::id())
+                    ->dehydrated()
+                    ->disabled()
                     ->visible(fn ($get) => $get('status') === 'issued'),
 
-                Forms\Components\DateTimePicker::make('issued_at')
+                Forms\Components\TextInput::make('issued_at')
+                    ->label('Issued Date')
                     ->visible(fn ($get) => $get('status') === 'issued')
-                    ->default(now()),
+                    ->default(today()->format('Y-m-d'))
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) {
+                            return today()->format('Y-m-d');
+                        }
+                        // If it's a datetime string, extract just the date part
+                        if (is_string($state)) {
+                            return substr($state, 0, 10); // Get YYYY-MM-DD from YYYY-MM-DDTHH:mm:ssZ
+                        }
+                        // If it's a Carbon/DateTime object, format it
+                        if ($state instanceof \DateTimeInterface) {
+                            return $state->format('Y-m-d');
+                        }
+                        return $state;
+                    })
+                    ->dehydrated()
+                    ->disabled(),
 
                 Forms\Components\DateTimePicker::make('verified_at')
                     ->label('Verified Date')

@@ -76,6 +76,11 @@ class Student extends Model
         return $this->hasManyThrough(Course::class, Result::class);
     }
 
+    public function studentCourses(): HasMany
+    {
+        return $this->hasMany(StudentCourse::class);
+    }
+
     public function getFullNameAttribute(): string
     {
         return trim($this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name);
