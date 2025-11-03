@@ -27,7 +27,7 @@ class RolesAndAdminSeeder extends Seeder
             $superAdminRole->syncPermissions(Permission::all());
         }
 
-        // Create Super Admin
+        // Create Super Admin only
         $superAdmin = User::firstOrCreate(
             ['email' => 'admin@admin.com'],
             [
@@ -39,40 +39,7 @@ class RolesAndAdminSeeder extends Seeder
         );
         $superAdmin->assignRole('super_admin');
 
-        // Create Faculty Admin
-        $facultyAdmin = User::firstOrCreate(
-            ['email' => 'facultyadmin@schoolofhygiene.edu.gh'],
-            [
-                'name' => 'Faculty Administrator',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-                'status' => 'active',
-            ]
-        );
-        $facultyAdmin->assignRole('faculty_admin');
-
-        // Create Department Admin
-        $departmentAdmin = User::firstOrCreate(
-            ['email' => 'deptadmin@schoolofhygiene.edu.gh'],
-            [
-                'name' => 'Department Administrator',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-                'status' => 'active',
-            ]
-        );
-        $departmentAdmin->assignRole('department_admin');
-
-        // Create a sample Lecturer
-        $lecturer = User::firstOrCreate(
-            ['email' => 'lecturer@schoolofhygiene.edu.gh'],
-            [
-                'name' => 'Sample Lecturer',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-                'status' => 'active',
-            ]
-        );
-        $lecturer->assignRole('lecturer');
+        // Note: Faculty admins, department admins, and lecturers are created in UsersSeeder
+        // with complete information including Northern Ghana names
     }
 }

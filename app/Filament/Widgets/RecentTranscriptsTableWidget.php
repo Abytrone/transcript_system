@@ -56,21 +56,17 @@ class RecentTranscriptsTableWidget extends BaseWidget
                         'Third Class' => 'danger',
                         'Pass' => 'secondary',
                     }),
-                Tables\Columns\TextColumn::make('delivery_method')
-                    ->label('Delivery')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'pickup' => 'secondary',
-                        'email' => 'primary',
-                        'mail' => 'warning',
-                        default => 'gray',
-                    }),
                 Tables\Columns\TextColumn::make('issuedBy.name')
                     ->label('Issued By'),
+                    // Make issue date human readable
                 Tables\Columns\TextColumn::make('issued_at')
                     ->label('Issued Date')
                     ->dateTime()
-                    ->sortable(),
+                    ->formatStateUsing(function ($state) {
+                        return $state->format('d M Y');
+                    })
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('issued_at', 'desc')
             ->paginated([10, 25, 50])

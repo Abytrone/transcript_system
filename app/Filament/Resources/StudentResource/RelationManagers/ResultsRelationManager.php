@@ -30,16 +30,21 @@ class ResultsRelationManager extends RelationManager
                     ->label('Course')
                     ->options(function () {
                         if (!Auth::check()) {
-                            return [];
+                            return Course::orderBy('code')->get()->mapWithKeys(function ($course) {
+                                return [$course->id => $course->code . ' - ' . $course->title];
+                            });
                         }
                         $user = Auth::user();
                         if ($user->hasRole('lecturer')) {
-                            return $user->taughtCourses()->orderBy('code')->get()->pluck('code', 'id')->map(function ($code, $id) {
-                                $course = Course::find($id);
-                                return $course ? ($course->code . ' - ' . $course->title) : $code;
-                            })->toArray();
+                            // Only show courses the lecturer teaches
+                            return $user->taughtCourses()->orderBy('code')->get()->mapWithKeys(function ($course) {
+                                return [$course->id => $course->code . ' - ' . $course->title];
+                            });
                         }
-                        return [];
+                        // For admins, show all courses
+                        return Course::orderBy('code')->get()->mapWithKeys(function ($course) {
+                            return [$course->id => $course->code . ' - ' . $course->title];
+                        });
                     })
                     ->required()
                     ->searchable()

@@ -40,6 +40,17 @@ class ImportResults extends Page
             return;
         }
 
+        // Check if lecturer has courses assigned
+        $user = Auth::user();
+        if ($user->taughtCourses()->count() === 0) {
+            Notification::make()
+                ->title('No Courses Assigned')
+                ->body('You have no courses assigned. Please contact the administrator to assign courses to your account.')
+                ->warning()
+                ->persistent()
+                ->send();
+        }
+
         $this->form->fill();
     }
 

@@ -94,6 +94,12 @@ class UserResource extends Resource
                         'lecturer' => 'success',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('taughtCourses_count')
+                    ->counts('taughtCourses')
+                    ->label('Courses')
+                    ->badge()
+                    ->color('success')
+                    ->visible(fn ($record) => $record && $record->hasRole('lecturer')),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -138,7 +144,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\CoursesRelationManager::class,
         ];
     }
 

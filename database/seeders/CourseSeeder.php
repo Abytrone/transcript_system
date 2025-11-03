@@ -67,6 +67,7 @@ class CourseSeeder extends Seeder
             ['code' => 'NUT302', 'title' => 'Nutrition Research', 'description' => 'Research methods in nutrition science.', 'credits' => 3, 'department_code' => 'NUT', 'program_code' => 'BND', 'level' => 300, 'semester' => 2, 'status' => 'active'],
         ];
 
+        $createdCount = 0;
         foreach ($courses as $courseData) {
             $department = $departments->get($courseData['department_code']);
             $program = $programs->get($courseData['program_code'] ?? null);
@@ -83,7 +84,10 @@ class CourseSeeder extends Seeder
                     'semester' => $courseData['semester'],
                     'status' => $courseData['status'],
                 ]);
+                $createdCount++;
             }
         }
+
+        $this->command->info("Created {$createdCount} courses");
     }
 }
