@@ -103,6 +103,29 @@ class ResultsRelationManager extends RelationManager
                     ->searchable()
                     ->sortable()
                     ->wrap(),
+                Tables\Columns\IconColumn::make('taught_by_me')
+                    ->label('My Course')
+                    ->boolean()
+                    ->getStateUsing(function ($record) {
+                        if (!Auth::check() || !Auth::user()->hasRole('lecturer')) {
+                            return false;
+                        }
+                        $courseId = $record->course_id;
+                        return Auth::user()->taughtCourses()->where('courses.id', $courseId)->exists();
+                    })
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('gray')
+                    ->visible(fn () => Auth::check() && Auth::user()->hasRole('lecturer'))
+                    ->tooltip(function ($record): string {
+                        if (!Auth::check() || !Auth::user()->hasRole('lecturer')) {
+                            return '';
+                        }
+                        $courseId = $record->course_id;
+                        $isMyCourse = Auth::user()->taughtCourses()->where('courses.id', $courseId)->exists();
+                        return $isMyCourse ? 'You teach this course' : 'Not your course';
+                    }),
                 Tables\Columns\TextColumn::make('score')
                     ->label('Score')
                     ->suffix('%')
