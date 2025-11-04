@@ -33,11 +33,13 @@ class StudentResource extends Resource
         $user = Auth::user();
 
         if ($user->hasRole('lecturer')) {
-            return $query->whereHas('program', function ($q) use ($user) {
-                $q->where('id', $user->program_id);
-            })->orWhereHas('results', function ($q) use ($user) {
-                $q->whereHas('course.lecturers', function ($q2) use ($user) {
-                    $q2->where('users.id', $user->id);
+            return $query->where(function ($q) use ($user) {
+                $q->whereHas('program', function ($q2) use ($user) {
+                    $q2->where('id', $user->program_id);
+                })->orWhereHas('results', function ($q2) use ($user) {
+                    $q2->whereHas('course.lecturers', function ($q3) use ($user) {
+                        $q3->where('users.id', $user->id);
+                    });
                 });
             });
         }
