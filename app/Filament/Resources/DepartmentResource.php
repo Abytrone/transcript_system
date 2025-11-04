@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class DepartmentResource extends Resource
 {
@@ -21,6 +22,22 @@ class DepartmentResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
     protected static ?string $navigationGroup = 'Academic Management';
     protected static ?int $navigationSort = 2;
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+
+        if ($user->hasRole('lecturer') || $user->hasRole('department_admin')) {
+            return $query->where('id', $user->department_id);
+        }
+
+        if ($user->hasRole('faculty_admin')) {
+            return $query->where('faculty_id', $user->faculty_id);
+        }
+
+        return $query;
+    }
 
     public static function form(Form $form): Form
     {
@@ -36,7 +53,19 @@ class DepartmentResource extends Resource
                 Forms\Components\Textarea::make('description')
                     ->columnSpanFull(),
                 Forms\Components\Select::make('faculty_id')
-                    ->relationship('faculty', 'name')
+                    ->relationship(
+                        name: 'faculty',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: function (Builder $query) {
+                            $user = Auth::user();
+
+                            if ($user->hasRole('lecturer') || $user->hasRole('department_admin') || $user->hasRole('faculty_admin')) {
+                                return $query->where('id', $user->faculty_id);
+                            }
+
+                            return $query;
+                        }
+                    )
                     ->required()
                     ->searchable()
                     ->preload(),

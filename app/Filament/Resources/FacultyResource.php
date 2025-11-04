@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class FacultyResource extends Resource
 {
@@ -20,6 +21,18 @@ class FacultyResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
     protected static ?string $navigationGroup = 'Academic Management';
     protected static ?int $navigationSort = 1;
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+
+        if ($user->hasRole('lecturer') || $user->hasRole('department_admin') || $user->hasRole('faculty_admin')) {
+            return $query->where('id', $user->faculty_id);
+        }
+
+        return $query;
+    }
 
     public static function form(Form $form): Form
     {

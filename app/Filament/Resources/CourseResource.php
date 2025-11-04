@@ -14,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class CourseResource extends Resource
 {
@@ -42,13 +43,51 @@ class CourseResource extends Resource
                     ->minValue(1)
                     ->maxValue(6),
                 Forms\Components\Select::make('department_id')
-                    ->relationship('department', 'name')
+                    ->relationship(
+                        name: 'department',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: function (Builder $query) {
+                            $user = Auth::user();
+
+                            if ($user->hasRole('lecturer') || $user->hasRole('department_admin')) {
+                                return $query->where('id', $user->department_id);
+                            }
+
+                            if ($user->hasRole('faculty_admin')) {
+                                return $query->where('faculty_id', $user->faculty_id);
+                            }
+
+                            return $query;
+                        }
+                    )
                     ->required()
                     ->searchable()
                     ->preload(),
                 Forms\Components\Select::make('program_id')
                     ->label('Program')
-                    ->relationship('program', 'name')
+                    ->relationship(
+                        name: 'program',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: function (Builder $query) {
+                            $user = Auth::user();
+
+                            if ($user->hasRole('lecturer')) {
+                                return $query->where('id', $user->program_id);
+                            }
+
+                            if ($user->hasRole('department_admin')) {
+                                return $query->where('department_id', $user->department_id);
+                            }
+
+                            if ($user->hasRole('faculty_admin')) {
+                                return $query->whereHas('department', function ($q) use ($user) {
+                                    $q->where('faculty_id', $user->faculty_id);
+                                });
+                            }
+
+                            return $query;
+                        }
+                    )
                     ->required()
                     ->searchable()
                     ->preload(),
@@ -71,6 +110,30 @@ class CourseResource extends Resource
                     ->default('active')
                     ->required(),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+
+        if ($user->hasRole('lecturer')) {
+            return $query->whereHas('lecturers', function ($q) use ($user) {
+                $q->where('users.id', $user->id);
+            });
+        }
+
+        if ($user->hasRole('department_admin')) {
+            return $query->where('department_id', $user->department_id);
+        }
+
+        if ($user->hasRole('faculty_admin')) {
+            return $query->whereHas('department', function ($q) use ($user) {
+                $q->where('faculty_id', $user->faculty_id);
+            });
+        }
+
+        return $query;
     }
 
     public static function table(Table $table): Table

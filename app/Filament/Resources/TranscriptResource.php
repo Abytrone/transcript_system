@@ -28,6 +28,40 @@ class TranscriptResource extends Resource
     protected static ?string $navigationGroup = 'Transcript Management';
     protected static ?int $navigationSort = 1;
 
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery()->withoutGlobalScopes([
+            SoftDeletingScope::class,
+        ]);
+
+        $user = Auth::user();
+
+        if ($user->hasRole('lecturer')) {
+            return $query->whereHas('student', function ($q) use ($user) {
+                $q->where('program_id', $user->program_id)
+                    ->orWhereHas('results', function ($q2) use ($user) {
+                        $q2->whereHas('course.lecturers', function ($q3) use ($user) {
+                            $q3->where('users.id', $user->id);
+                        });
+                    });
+            });
+        }
+
+        if ($user->hasRole('department_admin')) {
+            return $query->whereHas('student', function ($q) use ($user) {
+                $q->where('department_id', $user->department_id);
+            });
+        }
+
+        if ($user->hasRole('faculty_admin')) {
+            return $query->whereHas('student.department', function ($q) use ($user) {
+                $q->where('faculty_id', $user->faculty_id);
+            });
+        }
+
+        return $query;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -41,7 +75,36 @@ class TranscriptResource extends Resource
 
                 Forms\Components\Select::make('student_id')
                     ->label('Student')
-                    ->relationship('student', 'first_name')
+                    ->relationship(
+                        name: 'student',
+                        titleAttribute: 'first_name',
+                        modifyQueryUsing: function (Builder $query) {
+                            $user = Auth::user();
+
+                            if ($user->hasRole('lecturer')) {
+                                return $query->where(function ($q) use ($user) {
+                                    $q->where('program_id', $user->program_id)
+                                        ->orWhereHas('results', function ($q2) use ($user) {
+                                            $q2->whereHas('course.lecturers', function ($q3) use ($user) {
+                                                $q3->where('users.id', $user->id);
+                                            });
+                                        });
+                                });
+                            }
+
+                            if ($user->hasRole('department_admin')) {
+                                return $query->where('department_id', $user->department_id);
+                            }
+
+                            if ($user->hasRole('faculty_admin')) {
+                                return $query->whereHas('department', function ($q) use ($user) {
+                                    $q->where('faculty_id', $user->faculty_id);
+                                });
+                            }
+
+                            return $query;
+                        }
+                    )
                     ->getOptionLabelFromRecordUsing(fn (Student $record): string => "{$record->student_id} - {$record->full_name}")
                     ->required()
                     ->searchable()
@@ -320,28 +383,6 @@ class TranscriptResource extends Resource
             'view' => Pages\ViewTranscript::route('/{record}'),
             'edit' => Pages\EditTranscript::route('/{record}/edit'),
         ];
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        $query = parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-
-        $user = Auth::user();
-        if ($user->hasRole('super_admin')) {
-            return $query;
-        } elseif ($user->hasRole('faculty_admin')) {
-            return $query->whereHas('student.department', function ($q) use ($user) {
-                $q->where('faculty_id', $user->faculty_id);
-            });
-        } elseif ($user->hasRole('department_admin')) {
-            return $query->whereHas('student', function ($q) use ($user) {
-                $q->where('department_id', $user->department_id);
-            });
-        }
-        return $query->whereRaw('1 = 0');
     }
 
     public static function determineClassOfDegree(float $cgpa): string

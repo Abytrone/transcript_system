@@ -84,7 +84,7 @@ class StudentSeeder extends Seeder
                 continue;
             }
 
-            $programName = $studentData['program'];
+                $programName = $studentData['program'];
             $program = $programs->get($programName);
 
             // Assign photo based on gender
@@ -96,24 +96,24 @@ class StudentSeeder extends Seeder
             }
             $photoIndex++;
 
-            Student::create([
-                'student_id' => $studentData['student_id'],
-                'first_name' => $studentData['first_name'],
-                'last_name' => $studentData['last_name'],
-                'middle_name' => $studentData['middle_name'],
-                'email' => $studentData['email'],
-                'phone' => $studentData['phone'],
-                'date_of_birth' => $studentData['date_of_birth'],
-                'gender' => $studentData['gender'],
-                'nationality' => $studentData['nationality'],
-                'address' => $studentData['address'],
-                'department_id' => $department->id,
+                Student::create([
+                    'student_id' => $studentData['student_id'],
+                    'first_name' => $studentData['first_name'],
+                    'last_name' => $studentData['last_name'],
+                    'middle_name' => $studentData['middle_name'],
+                    'email' => $studentData['email'],
+                    'phone' => $studentData['phone'],
+                    'date_of_birth' => $studentData['date_of_birth'],
+                    'gender' => $studentData['gender'],
+                    'nationality' => $studentData['nationality'],
+                    'address' => $studentData['address'],
+                    'department_id' => $department->id,
                 'program_id' => $program?->id,
-                'year_of_admission' => $studentData['year_of_admission'],
-                'year_of_completion' => $studentData['year_of_completion'],
-                'status' => $studentData['status'],
+                    'year_of_admission' => $studentData['year_of_admission'],
+                    'year_of_completion' => $studentData['year_of_completion'],
+                    'status' => $studentData['status'],
                 'photo_path' => $photoUrl,
-            ]);
+                ]);
         }
 
         $this->command->info("Created " . count($students) . " students");

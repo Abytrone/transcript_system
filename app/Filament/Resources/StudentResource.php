@@ -27,6 +27,34 @@ class StudentResource extends Resource
     protected static ?string $navigationGroup = 'Student Management';
     protected static ?int $navigationSort = 1;
 
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+
+        if ($user->hasRole('lecturer')) {
+            return $query->whereHas('program', function ($q) use ($user) {
+                $q->where('id', $user->program_id);
+            })->orWhereHas('results', function ($q) use ($user) {
+                $q->whereHas('course.lecturers', function ($q2) use ($user) {
+                    $q2->where('users.id', $user->id);
+                });
+            });
+        }
+
+        if ($user->hasRole('department_admin')) {
+            return $query->where('department_id', $user->department_id);
+        }
+
+        if ($user->hasRole('faculty_admin')) {
+            return $query->whereHas('department', function ($q) use ($user) {
+                $q->where('faculty_id', $user->faculty_id);
+            });
+        }
+
+        return $query;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -65,7 +93,29 @@ class StudentResource extends Resource
                 Forms\Components\Textarea::make('address'),
                 Forms\Components\Select::make('program_id')
                     ->label('Program')
-                    ->relationship('program', 'name')
+                    ->relationship(
+                        name: 'program',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: function (Builder $query) {
+                            $user = Auth::user();
+
+                            if ($user->hasRole('lecturer')) {
+                                return $query->where('id', $user->program_id);
+                            }
+
+                            if ($user->hasRole('department_admin')) {
+                                return $query->where('department_id', $user->department_id);
+                            }
+
+                            if ($user->hasRole('faculty_admin')) {
+                                return $query->whereHas('department', function ($q) use ($user) {
+                                    $q->where('faculty_id', $user->faculty_id);
+                                });
+                            }
+
+                            return $query;
+                        }
+                    )
                     ->required()
                     ->searchable()
                     ->preload()

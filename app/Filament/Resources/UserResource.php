@@ -14,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role;
 
 class UserResource extends Resource
@@ -39,11 +40,39 @@ class UserResource extends Resource
                     ->tel()
                     ->maxLength(255),
                 Forms\Components\Select::make('faculty_id')
-                    ->relationship('faculty', 'name')
+                    ->relationship(
+                        name: 'faculty',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: function (Builder $query) {
+                            $user = Auth::user();
+
+                            if ($user->hasRole('faculty_admin')) {
+                                return $query->where('id', $user->faculty_id);
+                            }
+
+                            return $query;
+                        }
+                    )
                     ->searchable()
                     ->preload(),
                 Forms\Components\Select::make('department_id')
-                    ->relationship('department', 'name')
+                    ->relationship(
+                        name: 'department',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: function (Builder $query) {
+                            $user = Auth::user();
+
+                            if ($user->hasRole('faculty_admin')) {
+                                return $query->where('faculty_id', $user->faculty_id);
+                            }
+
+                            if ($user->hasRole('department_admin')) {
+                                return $query->where('id', $user->department_id);
+                            }
+
+                            return $query;
+                        }
+                    )
                     ->searchable()
                     ->preload(),
                 Forms\Components\Select::make('status')
@@ -55,7 +84,23 @@ class UserResource extends Resource
                     ->required(),
                 Forms\Components\Select::make('roles')
                     ->multiple()
-                    ->relationship('roles', 'name')
+                    ->relationship(
+                        name: 'roles',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: function (Builder $query) {
+                            $user = Auth::user();
+
+                            if ($user->hasRole('faculty_admin')) {
+                                return $query->whereIn('name', ['department_admin', 'lecturer']);
+                            }
+
+                            if ($user->hasRole('department_admin')) {
+                                return $query->where('name', 'lecturer');
+                            }
+
+                            return $query;
+                        }
+                    )
                     ->preload(),
                 Forms\Components\TextInput::make('password')
                     ->password()
@@ -160,9 +205,37 @@ class UserResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
+
+        $user = Auth::user();
+
+        if ($user->hasRole('faculty_admin')) {
+            return $query->where(function ($q) use ($user) {
+                $q->whereHas('roles', function ($roleQuery) {
+                    $roleQuery->whereIn('name', ['department_admin', 'lecturer']);
+                })
+                ->whereHas('department', function ($deptQuery) use ($user) {
+                    $deptQuery->where('faculty_id', $user->faculty_id);
+                });
+            });
+        }
+
+        if ($user->hasRole('department_admin')) {
+            return $query->where(function ($q) use ($user) {
+                $q->whereHas('roles', function ($roleQuery) {
+                    $roleQuery->where('name', 'lecturer');
+                })
+                ->where('department_id', $user->department_id);
+            });
+        }
+
+        if ($user->hasRole('lecturer')) {
+            return $query->where('id', $user->id);
+        }
+
+        return $query;
     }
 }
