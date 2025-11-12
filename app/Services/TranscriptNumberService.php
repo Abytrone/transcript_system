@@ -16,8 +16,9 @@ class TranscriptNumberService
         $currentYear = date('Y');
         $prefix = "SHT-{$currentYear}-";
 
-        // Get the last transcript number for this year
-        $lastTranscript = Transcript::where('transcript_number', 'like', $prefix . '%')
+        // Get the last transcript number for this year (including soft-deleted)
+        $lastTranscript = Transcript::withTrashed()
+            ->where('transcript_number', 'like', $prefix . '%')
             ->orderBy('transcript_number', 'desc')
             ->first();
 
@@ -26,9 +27,8 @@ class TranscriptNumberService
             $lastNumber = (int) substr($lastTranscript->transcript_number, -4);
             $nextNumber = $lastNumber + 1;
         } else {
-            // Check if there are any existing transcripts to determine starting number
-            $existingCount = Transcript::count();
-            $nextNumber = $existingCount + 1;
+            // No transcripts for this year, start from 1
+            $nextNumber = 1;
         }
 
         return $prefix . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
